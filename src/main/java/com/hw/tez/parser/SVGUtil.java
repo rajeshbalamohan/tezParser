@@ -26,6 +26,11 @@ import org.plutext.jaxb.svg11.Svg;
 import org.plutext.jaxb.svg11.Text;
 import org.plutext.jaxb.svg11.Title;
 
+/**
+ * 
+ * Need to refactor code a lot.  Every task, vertex, taskattempt should able to generate a SVG code of their own. (more like visitor)
+ *
+ */
 public class SVGUtil {
 
 	Svg svg = obj.createSvg();
@@ -250,6 +255,7 @@ public class SVGUtil {
 		jaxbMarshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
 		jaxbMarshaller.marshal(svg, file);
 
+		//TODO: dirty workaround to get rid of XMLRootException issue
 		BufferedReader reader = new BufferedReader(new FileReader(file));
 		BufferedWriter writer = new BufferedWriter(new FileWriter(new File(
 				"test_new.svg")));
