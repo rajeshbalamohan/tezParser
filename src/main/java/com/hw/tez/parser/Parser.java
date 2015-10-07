@@ -64,7 +64,7 @@ public class Parser {
 		System.out.println(dagMap);
 		//convertToXML(dagMap);
 		SVGUtil util = new SVGUtil(dagMap);
-		util.convertToXML();
+		util.convertToXML(file.getName());
 	}
 
 	static ObjectFactory obj = new ObjectFactory();

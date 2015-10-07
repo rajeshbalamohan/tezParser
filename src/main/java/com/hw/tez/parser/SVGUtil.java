@@ -1,30 +1,24 @@
 package com.hw.tez.parser;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.Map;
-import java.util.TreeMap;
-import java.util.TreeSet;
+import org.apache.hadoop.mapreduce.TaskCounter;
+import org.plutext.jaxb.svg11.Line;
+import org.plutext.jaxb.svg11.ObjectFactory;
+import org.plutext.jaxb.svg11.Svg;
+import org.plutext.jaxb.svg11.Text;
+import org.plutext.jaxb.svg11.Title;
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBElement;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Marshaller;
 import javax.xml.namespace.QName;
-
-import org.apache.tez.common.counters.DAGCounter;
-import org.apache.tez.common.counters.TaskCounter;
-import org.plutext.jaxb.svg11.Line;
-import org.plutext.jaxb.svg11.ObjectFactory;
-import org.plutext.jaxb.svg11.Svg;
-import org.plutext.jaxb.svg11.Text;
-import org.plutext.jaxb.svg11.Title;
+import java.io.File;
+import java.io.IOException;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.Map;
+import java.util.TreeMap;
+import java.util.TreeSet;
 
 /**
  * 
@@ -69,6 +63,14 @@ public class SVGUtil {
 		return t;
 	}
 
+  private void addLineToSVG(Line line) {
+    svg.getSVGDescriptionClassOrSVGAnimationClassOrSVGStructureClass().add(obj.createLine(line));
+  }
+
+  private void addTextToSVG(Text text) {
+    svg.getSVGDescriptionClassOrSVGAnimationClassOrSVGStructureClass().add(obj.createText(text));
+  }
+
 	/**
 	 * Draw the DAG
 	 * @param treeMap
@@ -89,8 +91,10 @@ public class SVGUtil {
 					new JAXBElement<Title>(titleName, Title.class, title));
 			line.setStyle("stroke: black; stroke-width:20");
 			line.setOpacity("0.3");
-			svg.getSVGDescriptionClassOrSVGAnimationClassOrSVGStructureClass()
-					.add(line);
+			line.setDisplay("Test");
+
+      addLineToSVG(line);
+
 
 			drawVertex(dag);
 			x1 = x1 + lenInSeconds;
@@ -99,6 +103,7 @@ public class SVGUtil {
 			y2 = y1;
 		}
 	}
+
 
 	/**
 	 * Draw the vertices
@@ -129,14 +134,13 @@ public class SVGUtil {
 			Title title = createTitle(titleStr);
 			line.getSVGDescriptionClass().add(
 					new JAXBElement<Title>(titleName, Title.class, title));
-			svg.getSVGDescriptionClassOrSVGAnimationClassOrSVGStructureClass()
-					.add(line);
+      addLineToSVG(line);
 			// For each vertex, draw the tasks
 			drawTask(vertex);
-		}
-	}
-	
-	private long getCounter(Map<String, String> counterMap, String counter) {
+    }
+  }
+
+  private long getCounter(Map<String, String> counterMap, String counter) {
 		long retValue = 0;
 		String val = counterMap.get(counter);
 		if (val != null) {
@@ -146,6 +150,7 @@ public class SVGUtil {
 	}
 	
 	private void setOpacity(Line line, Task task) {
+		/*
 		if (getCounter(task.TASK_COUNTERS_MAP, DAGCounter.RACK_LOCAL_TASKS.name()) > 0) {
 			line.setOpacity("0.8");
 		} else {
@@ -162,6 +167,7 @@ public class SVGUtil {
 		} else {
 			line.setOpacity("0.3");
 		}
+		*/
 	}
 
 	/**
@@ -203,8 +209,7 @@ public class SVGUtil {
 			if (x1 + lenInSeconds > 5) { // greater than 5 seconds
 				text.setX("" + x1 + 2);
 				text.setY(y1+"");
-				svg.getSVGDescriptionClassOrSVGAnimationClassOrSVGStructureClass()
-						.add(new JAXBElement<Text>(new QName("text"), Text.class, text));
+        addTextToSVG(text);
 			}
 
 			setOpacity(line, task);
@@ -218,10 +223,8 @@ public class SVGUtil {
 					+ (task.startTime - vertex.initRequestedTime) + " ms : "
 					+ task.toString();
 			Title title = createTitle(titleStr);
-			line.getSVGDescriptionClass().add(
-					new JAXBElement<Title>(titleName, Title.class, title));
-			svg.getSVGDescriptionClassOrSVGAnimationClassOrSVGStructureClass()
-					.add(line);
+			line.getSVGDescriptionClass().add(obj.createTitle(title));
+			addLineToSVG(line);
 
 		}
 	}
@@ -231,9 +234,7 @@ public class SVGUtil {
 	 * @throws IOException
 	 * @throws JAXBException
 	 */
-	public void convertToXML() throws IOException, JAXBException {
-		QName titleName = new QName("title");
-
+	public void convertToXML(String fileName) throws IOException, JAXBException {
 		TreeMap<Long, DAG> treeMap = new TreeMap<Long, DAG>();
 
 		for (Map.Entry<String, DAG> entry : dagMap.entrySet()) {
@@ -249,26 +250,14 @@ public class SVGUtil {
 		svg.setHeight("" + y2);
 		svg.setWidth("" + (MAX_X - MIN_X));
 
-		File file = new File("test.svg");
+
+		File file = new File(fileName + ".svg");
 		JAXBContext jaxbContext = JAXBContext.newInstance(Svg.class);
 		Marshaller jaxbMarshaller = jaxbContext.createMarshaller();
 		jaxbMarshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
 		jaxbMarshaller.marshal(svg, file);
-
-		//TODO: dirty workaround to get rid of XMLRootException issue
-		BufferedReader reader = new BufferedReader(new FileReader(file));
-		BufferedWriter writer = new BufferedWriter(new FileWriter(new File(
-				"test_new.svg")));
-		while (reader.ready()) {
-			String line = reader.readLine().replaceAll(
-					" xmlns:ns3=\"http://www.w3.org/2000/svg\" xmlns=\"\"", "");
-			writer.write(line);
-			writer.newLine();
-		}
-		reader.close();
-		writer.close();
-
-	}
+    System.out.println("Wrote SVG to " + file.getAbsolutePath());
+  }
 
 	/**
 	 * Constructor
